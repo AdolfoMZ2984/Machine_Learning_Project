@@ -1,0 +1,95 @@
+---
+title: "ML_Project"
+author: "Adolfo Morales"
+date: "May 26, 2017"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+## Assignment
+
+The document below details a Machine Learning approach to attempt to identify whether certain exercises are performed correctly. The data is gathered from Fitness Trackers worn by the subjects of the experiment. The data should be classified into 5 categories, Category A representing a correctly executed exercise, Categories B - E each describe a particular error. 
+
+## Getting Data
+
+The data was downloaded from the assignment website, and is being read in the section below. Required Libraries are also read into memory. 
+
+```{r Load_data,echo=TRUE}
+setwd("C:/Users/amora/OneDrive/Documents/R_Projects/Coursera/Machine_Learning/Project")
+training <- read.csv("pml-training.csv", na.strings=c("NA","#DIV/0!",""), header=TRUE)
+testing <- read.csv("pml-testing.csv", na.strings=c("NA","#DIV/0!",""), header=TRUE)
+
+set.seed(10)
+library(lattice)
+library(ggplot2)
+library(caret)
+library(randomForest)
+```
+
+## Splitting Training into Training/Validation
+
+In order to test the model to be fitted, the training data will be partitioned into a Training and a Validation set. 
+
+``` {r Training_validation,echo=TRUE}
+inTrain <- createDataPartition(training$classe, p=0.7, list=FALSE)
+training2 <- training[inTrain, ]
+validation <- training[-inTrain, ]
+```
+
+## Data Cleaning
+
+This section removes certain columns that would interfere with the analysis. It looks for columns that have NAs and removes those columns, as well as removing the first two column. Additionally, all the columns are transformed into numeric, in an effort to make sure that all Data Sets are of the same type. 
+``` {r reducing_variables,echo=TRUE}
+keep_cols<-colSums(is.na(training2))==FALSE
+training3<-training2[,keep_cols]
+training4<-training3[,-c(1,2,5,6)]
+validation2<-validation[,keep_cols]
+validation3<-validation2[,-c(1,2,5,6)]
+testing2<-testing[,keep_cols]
+testing3<-testing2[,-c(1,2,5,6)]
+
+cols=c(1:55)
+training4[,cols]=apply(training4[,cols],2,function(x) as.numeric(x))
+validation3[,cols]=apply(validation3[,cols],2,function(x) as.numeric(x))
+testing3[,cols]=apply(testing3[,cols],2,function(x) as.numeric(x))
+testing3$problem_id<-as.factor(testing3$problem_id)
+```
+
+
+## Fitting Models
+
+Fitting a Random Forest model, tried different models and found the model use to be the one that both calculates fastest, and provides the best result. 
+
+``` {r Model_Fitting,echo=TRUE}
+rf_model<- randomForest(classe ~. , data=training4)
+```
+
+## Making Prediction with Validation Data
+
+Model tested on Validation Data 
+
+``` {r pred_validation,echo=TRUE}
+pred_val_rf <- predict(rf_model, validation3[,-58], type = "class")
+```
+
+## Confusion Matrix
+
+The confusion matrix below shows model accuracy. The resluts are very good, hence we believe the process undertaken is sufficient for the problem at hand. 
+
+``` {r training_cm,echo=TRUE}
+cm_val_rf<-confusionMatrix(pred_val_rf, validation3$classe)
+cm_val_rf
+```
+
+## Making Prediction for test data
+
+Now that we have selected a model based on the Training set and tested in on the Validation set, we can confidently use it to predict the results of the Test set. 
+
+``` {r pred_test,echo=FALSE}
+pred_val_rf_test <- predict(rf_model, testing3[,-58], type = "class")
+pred_val_rf_test
+```
+
+
+
